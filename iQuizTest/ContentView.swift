@@ -1,300 +1,5 @@
-//import Foundation
-//import Network
-//
-//struct QuizTopic: Identifiable {
-//    let id = UUID()
-//    let icon: String
-//    let title: String
-//    let description: String
-//}
-//
-//struct QuizQuestion: Identifiable, Codable {
-//    let id = UUID()
-//    let question: String
-//    let options: [String]
-//    let correctAnswer: String
-//    
-//    enum CodingKeys: String, CodingKey {
-//        case question
-//        case options = "answers"
-//        case correctAnswer = "answer"
-//    }
-//}
-//
-//import Foundation
-//import Combine
-//
-//class QuizDataFetcher: ObservableObject {
-//    @Published var questions: [QuizQuestion] = []
-//    @Published var errorMessage: String?
-//    
-//    private var cancellable: AnyCancellable?
-//    
-//    func fetchData(from urlString: String) {
-//        guard let url = URL(string: urlString) else {
-//            errorMessage = "Invalid URL"
-//            return
-//        }
-//        
-//        cancellable = URLSession.shared.dataTaskPublisher(for: url)
-//            .map(\.data)
-//            .decode(type: [QuizQuestion].self, decoder: JSONDecoder())
-//            .receive(on: DispatchQueue.main)
-//            .sink(receiveCompletion: { completion in
-//                switch completion {
-//                case .failure(let error):
-//                    self.errorMessage = error.localizedDescription
-//                case .finished:
-//                    break
-//                }
-//            }, receiveValue: { questions in
-//                self.questions = questions
-//                self.errorMessage = nil
-//            })
-//    }
-//}
-//
-//import SwiftUI
-//
-//struct SettingsView: View {
-//    @AppStorage("quizDataURL") private var quizDataURL: String = "https://tednewardsandbox.site44.com/questions.json"
-//    @ObservedObject var dataFetcher: QuizDataFetcher
-//    
-//    @State private var tempURL: String = ""
-//    
-//    var body: some View {
-//        VStack {
-//            TextField("Quiz Data URL", text: $tempURL)
-//                .textFieldStyle(RoundedBorderTextFieldStyle())
-//                .padding()
-//            
-//            Button(action: {
-//                if let url = URL(string: tempURL), UIApplication.shared.canOpenURL(url) {
-//                    quizDataURL = tempURL
-//                    dataFetcher.fetchData(from: tempURL)
-//                } else {
-//                    dataFetcher.errorMessage = "Invalid URL"
-//                }
-//            }) {
-//                Text("Check Now")
-//            }
-//            .padding()
-//            
-//            if let errorMessage = dataFetcher.errorMessage {
-//                Text(errorMessage).foregroundColor(.red)
-//            }
-//        }
-//        .onAppear {
-//            tempURL = quizDataURL
-//        }
-//    }
-//}
-//
-//
-//import SwiftUI
-//
-//struct ContentView: View {
-//    @ObservedObject var dataFetcher = QuizDataFetcher()
-//    @State private var showSettings = false
-//
-//    var body: some View {
-//        NavigationView {
-//            List {
-//                ForEach(dataFetcher.questions) { question in
-//                    NavigationLink(destination: QuizView(topic: QuizTopic(icon: "questionmark.circle", title: question.question, description: "Answer the question"), questions: [question])) {
-//                        HStack {
-//                            Image(systemName: "questionmark.circle")
-//                            VStack(alignment: .leading) {
-//                                Text(question.question).font(.headline)
-//                                Text("Answer the question").font(.subheadline)
-//                            }
-//                        }
-//                    }
-//                }
-//            }
-//            .navigationTitle("iQuiz")
-//            .toolbar {
-//                ToolbarItem(placement: .navigationBarTrailing) {
-//                    Button(action: {
-//                        showSettings.toggle()
-//                    }) {
-//                        Text("Settings")
-//                    }
-//                }
-//            }
-//            .onAppear {
-//                dataFetcher.fetchData(from: UserDefaults.standard.string(forKey: "quizDataURL") ?? "http://tednewardsandbox.site44.com/questions.json")
-//            }
-//            .alert(isPresented: Binding<Bool>.constant(dataFetcher.errorMessage != nil)) {
-//                Alert(title: Text("Error"), message: Text(dataFetcher.errorMessage ?? "Unknown error"), dismissButton: .default(Text("OK")))
-//            }
-//            .sheet(isPresented: $showSettings) {
-//                SettingsView(dataFetcher: dataFetcher)
-//            }
-//        }
-//    }
-//}
-//
-//
-//struct QuizView: View {
-//    let topic: QuizTopic
-//    let questions: [QuizQuestion]
-//    
-//    @State private var currentQuestionIndex = 0
-//    @State private var score = 0
-//    @State private var showResult = false
-//    
-//    var body: some View {
-//        if showResult {
-//            ResultView(score: score, total: questions.count)
-//        } else {
-//            QuestionView(question: questions[currentQuestionIndex],
-//                         questions: questions,
-//                         currentIndex: currentQuestionIndex,
-//                         score: $score,
-//                         showResult: $showResult,
-//                         nextQuestion: {
-//                            if currentQuestionIndex + 1 < questions.count {
-//                                currentQuestionIndex += 1
-//                            } else {
-//                                showResult = true
-//                            }
-//                         })
-//        }
-//    }
-//}
-//
-//
-//struct QuestionView: View {
-//    let question: QuizQuestion
-//    let questions: [QuizQuestion]
-//    let currentIndex: Int
-//    @Binding var score: Int
-//    @Binding var showResult: Bool
-//    let nextQuestion: () -> Void
-//    
-//    @State private var selectedAnswer: String? = nil
-//    @State private var showAnswer = false
-//    
-//    var body: some View {
-//        VStack {
-//            Text(question.question).font(.title).padding()
-//            ForEach(question.options, id: \.self) { option in
-//                Button(action: {
-//                    selectedAnswer = option
-//                }) {
-//                    HStack {
-//                        Text(option)
-//                        Spacer()
-//                        if selectedAnswer == option {
-//                            Image(systemName: "checkmark")
-//                        }
-//                    }
-//                    .padding()
-//                    .background(Color(UIColor.systemGray6))
-//                    .cornerRadius(8)
-//                }
-//            }
-//            Button(action: {
-//                if selectedAnswer != nil {
-//                    showAnswer = true
-//                }
-//            }) {
-//                Text("Submit")
-//            }
-//            .padding()
-//            .sheet(isPresented: $showAnswer, onDismiss: {
-//                if currentIndex + 1 < questions.count {
-//                    nextQuestion()
-//                } else {
-//                    showResult = true
-//                }
-//            }) {
-//                AnswerView(question: question, selectedAnswer: selectedAnswer!, score: $score)
-//            }
-//        }
-//        .navigationBarBackButtonHidden(true)
-//    }
-//}
-//
-//struct AnswerView: View {
-//    let question: QuizQuestion
-//    let selectedAnswer: String
-//    @Binding var score: Int
-//    
-//    var body: some View {
-//        VStack {
-//            Text(question.question).font(.title).padding()
-//            ForEach(question.options, id: \.self) { option in
-//                HStack {
-//                    Text(option)
-//                    Spacer()
-//                    if option == question.correctAnswer {
-//                        Image(systemName: "checkmark.circle.fill")
-//                    } else if option == selectedAnswer {
-//                        Image(systemName: "xmark.circle.fill")
-//                    }
-//                }
-//                .padding()
-//                .background(Color(UIColor.systemGray6))
-//                .cornerRadius(8)
-//            }
-//            Text(selectedAnswer == question.correctAnswer ? "Correct!" : "Wrong!").font(.headline).padding()
-//            Button(action: {
-//                if selectedAnswer == question.correctAnswer {
-//                    score += 1
-//                }
-//            }) {
-//                Text("Next")
-//            }
-//            .padding()
-//        }
-//    }
-//}
-//
-//struct ResultView: View {
-//    let score: Int
-//    let total: Int
-//    
-//    var body: some View {
-//        VStack {
-//            Text("Quiz Finished!").font(.title).padding()
-//            Text("You scored \(score) out of \(total)").font(.headline).padding()
-//            Button(action: {
-//                // Navigate back to the quiz list
-//                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-//                   let window = windowScene.windows.first {
-//                    window.rootViewController?.dismiss(animated: true, completion: nil)
-//                }
-//            }) {
-//                Text("Back to Quiz List")
-//            }
-//            .padding()
-//        }
-//    }
-//}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+//Made by Sachin Dhami
 
 import SwiftUI
 import Network
@@ -306,41 +11,105 @@ struct QuizCategory: Identifiable, Codable {
     let questions: [Question]
 }
 
+struct GradientText: View {
+    var text: String
+    var gradient: Gradient
+
+    var body: some View {
+        Text(text)
+            .font(.largeTitle)
+            .fontWeight(.bold)
+            .foregroundStyle(
+                LinearGradient(
+                    gradient: gradient,
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .shadow(color: Color.black.opacity(0.15), radius: 2, x: 0, y: 1)
+    }
+}
+
+
+
 struct HomeView: View {
     @State private var showingPopover = false
     @State private var newURL = "https://tednewardsandbox.site44.com/questions.json"
     @State private var quizCategories: [QuizCategory] = []
     @State private var alertMessage = ""
-    
+
     var body: some View {
         NavigationView {
             List(quizCategories) { category in
                 NavigationLink(destination: QuestionListView(category: category)) {
                     QuizCategoryRow(category: category)
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 15)
+                                .fill(LinearGradient(
+                                    gradient: Gradient(colors: [Color.blue.opacity(0.1), Color.purple.opacity(0.1)]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 15)
+                                        .stroke(LinearGradient(
+                                            gradient: Gradient(colors: [Color.blue, Color.purple]),
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        ), lineWidth: 2)
+                                )
+                                .shadow(color: Color.black.opacity(0.1), radius: 3, x: 0, y: 2)
+                        )
+                        .padding(.horizontal)
                 }
             }
-            .navigationBarTitle("Quizzes for iQuiz!")
-            .navigationBarItems(trailing:
-                Button(action: {
-                    showingPopover = true
-                }) {
-                    Text("Settings")
+            .listStyle(PlainListStyle())
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    GradientText(
+                        text: "Quizzes for iQuiz!",
+                        gradient: Gradient(colors: [Color.blue.opacity(0.7)])
+                    )
                 }
-                .popover(isPresented: $showingPopover, arrowEdge: .trailing) {
-                    VStack {
-                        Text("Enter/paste data link:")
-                        TextField("Enter URL", text: $newURL).textFieldStyle(RoundedBorderTextFieldStyle())
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: {
+                        showingPopover = true
+                    }) {
+                        Image(systemName: "gear")
+                            .imageScale(.large)
                             .padding()
-                        Button("Check Now") {
-                            getData(from: newURL)
-                            showingPopover = false
+                    }
+                    .popover(isPresented: $showingPopover, arrowEdge: .trailing) {
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("Enter/paste data link:")
+                                .font(.headline)
+
+                            TextField("Enter URL", text: $newURL)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .padding()
+
+                            Button(action: {
+                                dataLink(from: newURL)
+                                showingPopover = false
+                            }) {
+                                Text("Check Now")
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .background(Color.blue)
+                                    .foregroundColor(.white)
+                                    .cornerRadius(10)
+                            }
+                            .padding(.horizontal)
                         }
                         .padding()
+                        .frame(width: 300)
                     }
                 }
-            )
+            }
             .onAppear {
-                getData(from: newURL)
+                dataLink(from: newURL)
             }
             .alert(isPresented: Binding<Bool>(
                 get: { alertMessage != "" },
@@ -352,37 +121,6 @@ struct HomeView: View {
 
 
 
-    
-    func getData(from url: String) {
-        guard let url = URL(string: url) else {
-            alertMessage = "Invalid URL"
-            return
-        }
-        
-        if !Reachability.isConnectedToNetwork() {
-            alertMessage = "No internet connection"
-            return
-        }
-        
-        URLSession.shared.dataTask(with: url) { data, response, error in
-            if let data = data {
-                do {
-                    let decoder = JSONDecoder()
-                    let quizData = try decoder.decode([QuizCategory].self, from: data)
-                    DispatchQueue.main.async {
-                        self.quizCategories = quizData
-                        UserDefaults.standard.set(url.absoluteString, forKey: "quizDataURL")
-                    }
-                } catch {
-                    alertMessage = "JSON decoding error: \(error.localizedDescription)"
-                }
-            } else if let error = error {
-                alertMessage = "Error fetching data: \(error.localizedDescription)"
-            }
-        }.resume()
-    }
-}
-
 
 
 struct QuizCategoryRow: View {
@@ -390,7 +128,7 @@ struct QuizCategoryRow: View {
     
     var body: some View {
         HStack {
-            // Use conditional statements to determine which image to display
+            // Using conditional statements to determine which image from system to display
             if category.title == "Mathematics" {
                 Image(systemName: "number.circle")
                     .resizable()
@@ -421,7 +159,35 @@ struct QuizCategoryRow: View {
     }
 }
 
-
+    func dataLink(from url: String) {
+        guard let url = URL(string: url) else {
+            alertMessage = "Invalid URL"
+            return
+        }
+        
+        if !Reachability.isConnectedToNetwork() {
+            alertMessage = "No internet connection"
+            return
+        }
+        
+        URLSession.shared.dataTask(with: url) { data, response, error in
+            if let data = data {
+                do {
+                    let decoder = JSONDecoder()
+                    let quizData = try decoder.decode([QuizCategory].self, from: data)
+                    DispatchQueue.main.async {
+                        self.quizCategories = quizData
+                        UserDefaults.standard.set(url.absoluteString, forKey: "quizDataURL")
+                    }
+                } catch {
+                    alertMessage = "JSON decoding error: \(error.localizedDescription)"
+                }
+            } else if let error = error {
+                alertMessage = "Error fetching data: \(error.localizedDescription)"
+            }
+        }.resume()
+    }
+}
 
 
 struct HomeView_Previews: PreviewProvider {
@@ -429,6 +195,8 @@ struct HomeView_Previews: PreviewProvider {
         HomeView()
     }
 }
+
+
 
 struct Question: Codable {
     let text: String
@@ -477,46 +245,14 @@ struct QuestionListView: View {
                     .disabled(selectedAnswerIndex == nil)
                 }
             } else {
-                FinishedView(score: userScore, totalQuestions: totalQuestions)
+                ScoreView(score: userScore, totalQuestions: totalQuestions)
             }
         }
     }
 }
 
 
-//struct QuestionView: View {
-//    let question: Question
-//    @Binding var selectedAnswerIndex: Int?
-//    
-//    var body: some View {
-//        VStack {
-//            Text(question.text)
-//                .font(.title)
-//                .padding()
-//            
-//            ForEach(question.answers.indices, id: \.self) { index in
-//                Button(action: {
-//                    selectedAnswerIndex = index
-//                }) {
-//                    HStack {
-//                        Image(systemName: selectedAnswerIndex == index ? "checkmark.circle.fill" : "circle")
-//                            .foregroundColor(selectedAnswerIndex == index ? .green : .gray)
-//                        Text(question.answers[index])
-//                            .multilineTextAlignment(.leading)
-//                    }
-//                    .padding()
-//                    .frame(maxWidth: .infinity, alignment: .leading)
-//                    .background(selectedAnswerIndex == index ? Color.gray.opacity(0.2) : Color.clear)
-//                    .cornerRadius(8)
-//                }
-//                .buttonStyle(PlainButtonStyle())
-//            }
-//            
-//            Spacer()
-//        }
-//        .padding()
-//    }
-//}
+
 struct QuestionView: View {
     let question: Question
     @Binding var selectedAnswerIndex: Int?
@@ -526,6 +262,17 @@ struct QuestionView: View {
             Text(question.text)
                 .font(.title)
                 .padding()
+                .multilineTextAlignment(.center)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(LinearGradient(
+                            gradient: Gradient(colors: [Color.blue.opacity(0.2), Color.purple.opacity(0.2)]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ))
+                        .shadow(color: Color.black.opacity(0.2), radius: 5, x: 0, y: 3)
+                )
+                .padding(.horizontal)
             
             ForEach(question.answers.indices, id: \.self) { index in
                 AnswerButton(
@@ -541,103 +288,38 @@ struct QuestionView: View {
     }
 }
 
+
+
 struct AnswerButton: View {
     let isSelected: Bool
     let action: () -> Void
     let text: String
-    
+
     var body: some View {
         Button(action: action) {
             HStack {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .foregroundColor(isSelected ? .green : .gray)
-                
                 Text(text)
+                    .fontWeight(isSelected ? .bold : .regular)
+                    .foregroundColor(.primary)
                     .multilineTextAlignment(.leading)
             }
             .padding()
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(isSelected ? Color.gray.opacity(0.2) : Color.clear)
-            .cornerRadius(8)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(isSelected ? Color.green.opacity(0.2) : Color.clear)
+                    .shadow(color: isSelected ? Color.green.opacity(0.5) : Color.clear, radius: 5, x: 0, y: 2)
+            )
         }
         .buttonStyle(PlainButtonStyle())
+        .animation(.easeInOut(duration: 0.3), value: isSelected)
     }
 }
 
 
 
-
-//struct AnswerView: View {
-//    let question: Question
-//    let correctAnswer: String
-//    let userAnswer: String?
-//    let dismissAction: () -> Void
-//    
-//    var isAnswerCorrect: Bool {
-//        userAnswer == correctAnswer
-//    }
-//    
-//    var body: some View {
-//        ZStack {
-//            LinearGradient(gradient: Gradient(colors: [Color.blue, Color.purple]), startPoint: .topLeading, endPoint: .bottomTrailing)
-//                .edgesIgnoringSafeArea(.all)
-//            
-//            VStack(spacing: 20) {
-//                Text("Question")
-//                    .font(.title)
-//                    .foregroundColor(.white)
-//                    .padding()
-//                    .accessibility(label: Text("Question"))
-//                
-//                Text(question.text)
-//                    .foregroundColor(.white)
-//                    .multilineTextAlignment(.center)
-//                    .padding()
-//                
-//                Text("Correct Answer")
-//                    .font(.title)
-//                    .foregroundColor(.white)
-//                    .padding()
-//                    .accessibility(label: Text("Correct Answer"))
-//                
-//                Text(correctAnswer)
-//                    .foregroundColor(.green)
-//                    .font(.title)
-//                    .padding()
-//                
-//                if !isAnswerCorrect {
-//                    Text("Your Answer: \(userAnswer ?? "No Answer")")
-//                        .foregroundColor(.red)
-//                        .font(.title)
-//                        .padding()
-//                        .accessibility(label: Text("Your Answer: \(userAnswer ?? "No Answer")"))
-//                }
-//                
-//                if isAnswerCorrect {
-//                    Text("+1")
-//                        .foregroundColor(.green)
-//                        .font(.title)
-//                        .padding()
-//                        .accessibility(hidden: true) // Hide this text from accessibility
-//                }
-//                
-//                Button(action: dismissAction) {
-//                    Text("Next")
-//                        .foregroundColor(.white)
-//                        .font(.title)
-//                        .padding()
-//                        .frame(maxWidth: .infinity)
-//                        .background(Color.green)
-//                        .cornerRadius(10)
-//                }
-//                .accessibility(label: Text("Next"))
-//            }
-//            .padding()
-//        }
-//    }
-//}
-//
-//
 struct Reachability {
     static func isConnectedToNetwork() -> Bool {
         return true
@@ -718,7 +400,7 @@ struct AnswerView: View {
 
 
 
-struct FinishedView: View {
+struct ScoreView: View {
     let score: Int
     let totalQuestions: Int
     
